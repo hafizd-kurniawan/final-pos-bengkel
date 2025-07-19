@@ -1,5 +1,6 @@
 # Backend (Go)
 backend/vehicle-sales-backend
+backend/backend-binary
 backend/.env
 backend/vendor/
 backend/*.log
