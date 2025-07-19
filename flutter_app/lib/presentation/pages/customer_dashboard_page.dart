@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/models/vehicle.dart';
 import '../../data/models/test_drive.dart';
-import '../../data/datasources/api_service_locator.dart';
+import '../bloc/dashboard/dashboard_bloc.dart';
+import '../bloc/dashboard/dashboard_event.dart';
+import '../bloc/dashboard/dashboard_state.dart';
+import '../bloc/auth/auth_bloc.dart';
+import '../bloc/auth/auth_event.dart';
 import '../widgets/vehicle_grid_widget.dart';
 import '../widgets/test_drive_card.dart';
 
@@ -15,18 +20,13 @@ class CustomerDashboardPage extends StatefulWidget {
 class _CustomerDashboardPageState extends State<CustomerDashboardPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  List<Vehicle> _featuredVehicles = [];
-  List<Vehicle> _recentlyViewed = [];
-  List<TestDrive> _myTestDrives = [];
-  bool _isLoading = true;
-  String? _error;
-  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadData();
+    // Load dashboard data
+    context.read<DashboardBloc>().add(const DashboardDataRequested());
   }
 
   @override
@@ -35,19 +35,136 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
     super.dispose();
   }
 
-  Future<void> _loadData() async {
-    try {
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
+  void _logout() {
+    context.read<AuthBloc>().add(const AuthLogoutRequested());
+    Navigator.pushReplacementNamed(context, '/login');
+  }
 
-      final vehiclesFuture = apiServices.vehicleService
-          .getVehicles(status: 'available', limit: 20);
-      final testDrivesFuture = apiServices.testDriveService
-          .getMyTestDrives(limit: 10);
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Customer Dashboard'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(icon: Icon(Icons.dashboard), text: 'Overview'),
+            Tab(icon: Icon(Icons.directions_car), text: 'Vehicles'),
+            Tab(icon: Icon(Icons.drive_eta), text: 'Test Drives'),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              context.read<DashboardBloc>().add(const DashboardRefreshRequested());
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+          ),
+        ],
+      ),
+      body: BlocBuilder<DashboardBloc, DashboardState>(
+        builder: (context, state) {
+          if (state is DashboardLoading) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (state is DashboardError) {
+            return _buildErrorWidget(state.message);
+          } else if (state is DashboardLoaded) {
+            return TabBarView(
+              controller: _tabController,
+              children: [
+                _buildOverviewTab(),
+                _buildVehiclesTab(),
+                _buildTestDrivesTab(),
+              ],
+            );
+          }
+          
+          return const Center(child: CircularProgressIndicator());
+        },
+      ),
+    );
+  }
 
-      final results = await Future.wait([
+  Widget _buildErrorWidget(String error) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.error_outline,
+            size: 64,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Failed to load dashboard',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            error,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.error,
+                ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              context.read<DashboardBloc>().add(const DashboardDataRequested());
+            },
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOverviewTab() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.dashboard, size: 64),
+          SizedBox(height: 16),
+          Text('Customer Dashboard Overview'),
+          Text('Welcome to Vehicle Sales Portal!'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVehiclesTab() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.directions_car, size: 64),
+          SizedBox(height: 16),
+          Text('Browse Vehicles'),
+          Text('Vehicle catalog coming soon...'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTestDrivesTab() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.drive_eta, size: 64),
+          SizedBox(height: 16),
+          Text('My Test Drives'),
+          Text('Test drive history coming soon...'),
+        ],
+      ),
+    );
+  }
         vehiclesFuture,
         testDrivesFuture,
       ]);

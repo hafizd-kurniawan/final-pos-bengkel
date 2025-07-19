@@ -23,18 +23,17 @@ class SalesDashboardPage extends StatefulWidget {
 class _SalesDashboardPageState extends State<SalesDashboardPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  DashboardData? _dashboardData;
   List<Lead> _myLeads = [];
   List<Sale> _mySales = [];
   List<TestDrive> _testDrives = [];
-  bool _isLoading = true;
-  String? _error;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadData();
+    // Load dashboard data
+    context.read<DashboardBloc>().add(const DashboardDataRequested());
+    _loadAdditionalData();
   }
 
   @override
@@ -43,38 +42,23 @@ class _SalesDashboardPageState extends State<SalesDashboardPage>
     super.dispose();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadAdditionalData() async {
     try {
+      // Load sales-specific data (leads, sales, test drives)
+      // For now, we'll use empty lists - this will be improved later
       setState(() {
-        _isLoading = true;
-        _error = null;
-      });
-
-      final dashboardFuture = apiServices.dashboardService.getDashboard();
-      final leadsFuture = apiServices.leadService.getMyLeads(limit: 20);
-      final salesFuture = apiServices.saleService.getSales(limit: 20);
-      final testDrivesFuture = apiServices.testDriveService.getTestDrives(limit: 20);
-
-      final results = await Future.wait([
-        dashboardFuture,
-        leadsFuture,
-        salesFuture,
-        testDrivesFuture,
-      ]);
-
-      setState(() {
-        _dashboardData = results[0] as DashboardData;
-        _myLeads = results[1] as List<Lead>;
-        _mySales = results[2] as List<Sale>;
-        _testDrives = results[3] as List<TestDrive>;
-        _isLoading = false;
+        _myLeads = [];
+        _mySales = [];
+        _testDrives = [];
       });
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      // Handle error
     }
+  }
+
+  void _logout() {
+    context.read<AuthBloc>().add(const AuthLogoutRequested());
+    Navigator.pushReplacementNamed(context, '/login');
   }
 
   @override
@@ -93,7 +77,10 @@ class _SalesDashboardPageState extends State<SalesDashboardPage>
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
+            onPressed: () {
+              context.read<DashboardBloc>().add(const DashboardRefreshRequested());
+              _loadAdditionalData();
+            },
           ),
           IconButton(
             icon: const Icon(Icons.add_circle),
@@ -102,20 +89,32 @@ class _SalesDashboardPageState extends State<SalesDashboardPage>
               _showQuickActionsMenu(context);
             },
           ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+          ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? _buildErrorWidget()
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildOverviewTab(),
-                    _buildLeadsTab(),
-                    _buildActivitiesTab(),
-                  ],
-                ),
+      body: BlocBuilder<DashboardBloc, DashboardState>(
+        builder: (context, state) {
+          if (state is DashboardLoading) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (state is DashboardError) {
+            return _buildErrorWidget(state.message);
+          } else if (state is DashboardLoaded) {
+            return TabBarView(
+              controller: _tabController,
+              children: [
+                _buildOverviewTab(state.dashboardData),
+                _buildLeadsTab(),
+                _buildActivitiesTab(),
+              ],
+            );
+          }
+          
+          return const Center(child: CircularProgressIndicator());
+        },
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           _showQuickActionsMenu(context);
@@ -125,7 +124,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage>
     );
   }
 
-  Widget _buildErrorWidget() {
+  Widget _buildErrorWidget(String error) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -142,7 +141,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage>
           ),
           const SizedBox(height: 8),
           Text(
-            _error!,
+            error,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.error,
                 ),
@@ -150,7 +149,9 @@ class _SalesDashboardPageState extends State<SalesDashboardPage>
           ),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: _loadData,
+            onPressed: () {
+              context.read<DashboardBloc>().add(const DashboardDataRequested());
+            },
             child: const Text('Retry'),
           ),
         ],
@@ -158,18 +159,19 @@ class _SalesDashboardPageState extends State<SalesDashboardPage>
     );
   }
 
-  Widget _buildOverviewTab() {
-    if (_dashboardData == null) return const SizedBox.shrink();
-
+  Widget _buildOverviewTab(DashboardData dashboardData) {
     return RefreshIndicator(
-      onRefresh: _loadData,
+      onRefresh: () async {
+        context.read<DashboardBloc>().add(const DashboardRefreshRequested());
+        await _loadAdditionalData();
+      },
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Performance Summary
-            _buildPerformanceSummary(),
+            _buildPerformanceSummary(dashboardData),
             const SizedBox(height: 24),
 
             // Sales Performance Chart
@@ -177,7 +179,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage>
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: SalesPerformanceWidget(
-                  salesData: _dashboardData!.charts.salesChart,
+                  salesData: dashboardData.charts.salesChart,
                 ),
               ),
             ),
@@ -195,8 +197,8 @@ class _SalesDashboardPageState extends State<SalesDashboardPage>
     );
   }
 
-  Widget _buildPerformanceSummary() {
-    final summary = _dashboardData!.summary;
+  Widget _buildPerformanceSummary(DashboardData dashboardData) {
+    final summary = dashboardData.summary;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -378,30 +380,40 @@ class _SalesDashboardPageState extends State<SalesDashboardPage>
   }
 
   Widget _buildLeadsTab() {
-    return RefreshIndicator(
-      onRefresh: _loadData,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _myLeads.length + 1,
-        itemBuilder: (context, index) {
-          if (index == 0) {
-            return _buildLeadsHeader();
-          }
+    return BlocBuilder<DashboardBloc, DashboardState>(
+      builder: (context, state) {
+        if (state is DashboardLoaded) {
+          return RefreshIndicator(
+            onRefresh: () async {
+              context.read<DashboardBloc>().add(const DashboardRefreshRequested());
+              await _loadAdditionalData();
+            },
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _myLeads.length + 1,
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return _buildLeadsHeader(state.dashboardData);
+                }
 
-          final lead = _myLeads[index - 1];
-          return _buildLeadCard(lead);
-        },
-      ),
+                final lead = _myLeads[index - 1];
+                return _buildLeadCard(lead);
+              },
+            ),
+          );
+        }
+        return const Center(child: CircularProgressIndicator());
+      },
     );
   }
 
-  Widget _buildLeadsHeader() {
+  Widget _buildLeadsHeader(DashboardData dashboardData) {
     return Column(
       children: [
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: LeadConversionChart(data: _dashboardData!.charts.leadConversion),
+            child: LeadConversionChart(data: dashboardData.charts.leadConversion),
           ),
         ),
         const SizedBox(height: 16),
