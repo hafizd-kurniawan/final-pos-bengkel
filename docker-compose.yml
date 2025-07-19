@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: vehicle_sales_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: vehicle_sales
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - vehicle_sales_network
+
+  # Backend service (optional - can be run directly)
+  backend:
+    build: ./backend
+    container_name: vehicle_sales_backend
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: password
+      DB_NAME: vehicle_sales
+      JWT_SECRET: your-secret-key-here
+      PORT: 8080
+    depends_on:
+      - postgres
+    networks:
+      - vehicle_sales_network
+
+volumes:
+  postgres_data:
+
+networks:
+  vehicle_sales_network:
+    driver: bridge

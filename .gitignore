@@ -1,0 +1,56 @@
+# Backend (Go)
+backend/vehicle-sales-backend
+backend/.env
+backend/vendor/
+backend/*.log
+
+# Frontend (Flutter)
+flutter_app/build/
+flutter_app/.dart_tool/
+flutter_app/.packages
+flutter_app/.pub/
+flutter_app/pubspec.lock
+flutter_app/ios/
+flutter_app/android/
+flutter_app/web/
+flutter_app/windows/
+flutter_app/macos/
+flutter_app/linux/
+
+# Database
+*.db
+*.sqlite
+*.sql
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Dependencies
+node_modules/
+vendor/
+
+# Build artifacts
+dist/
+build/
+target/
+
+# Docker
+.env
+docker-compose.override.yml
+
+# Temporary files
+tmp/
+temp/
+*.tmp
