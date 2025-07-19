@@ -17,6 +17,14 @@ func SetupRoutes(app *fiber.App, config *config.Config) {
 	// API group
 	api := app.Group("/api/v1")
 
+	// Health check (public)
+	api.Get("/health", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"status": "ok",
+			"message": "Vehicle Sales API is running",
+		})
+	})
+
 	// Public routes
 	api.Post("/auth/login", authHandler.Login)
 	api.Post("/auth/register", authHandler.Register)
@@ -33,12 +41,4 @@ func SetupRoutes(app *fiber.App, config *config.Config) {
 	vehicles.Post("/", middleware.RoleRequired(models.RoleAdmin, models.RoleSales), vehicleHandler.CreateVehicle)
 	vehicles.Put("/:id", middleware.RoleRequired(models.RoleAdmin, models.RoleSales), vehicleHandler.UpdateVehicle)
 	vehicles.Delete("/:id", middleware.RoleRequired(models.RoleAdmin), vehicleHandler.DeleteVehicle)
-
-	// Health check
-	api.Get("/health", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"status": "ok",
-			"message": "Vehicle Sales API is running",
-		})
-	})
 }
