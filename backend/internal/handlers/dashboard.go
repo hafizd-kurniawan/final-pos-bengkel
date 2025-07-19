@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"vehicle-sales-backend/internal/database"
+	"vehicle-sales-backend/internal/middleware"
 	"vehicle-sales-backend/internal/models"
 
 	"github.com/gofiber/fiber/v2"
@@ -68,8 +69,9 @@ type RecentData struct {
 
 // GetDashboard returns comprehensive dashboard data
 func (h *DashboardHandler) GetDashboard(c *fiber.Ctx) error {
-	userRole := c.Locals("user_role").(models.UserRole)
-	userID := c.Locals("user_id").(uint)
+	authCtx := c.Locals("auth").(*middleware.AuthContext)
+	userRole := authCtx.Role
+	userID := authCtx.UserID
 
 	var dashboard DashboardData
 
@@ -263,8 +265,9 @@ func (h *DashboardHandler) getRecentData(role models.UserRole, userID uint) Rece
 
 // GetAnalytics returns detailed analytics data
 func (h *DashboardHandler) GetAnalytics(c *fiber.Ctx) error {
-	userRole := c.Locals("user_role").(models.UserRole)
-	userID := c.Locals("user_id").(uint)
+	authCtx := c.Locals("auth").(*middleware.AuthContext)
+	userRole := authCtx.Role
+	userID := authCtx.UserID
 
 	// Only admin and sales can access detailed analytics
 	if userRole != models.RoleAdmin && userRole != models.RoleSales {

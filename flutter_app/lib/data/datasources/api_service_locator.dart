@@ -30,7 +30,7 @@ class ApiServiceLocator {
     _networkService.initialize();
 
     // Initialize all API services
-    authService = AuthRemoteDataSource(_networkService);
+    authService = AuthRemoteDataSourceImpl(networkService: _networkService);
     vehicleService = VehicleRemoteDataSource(_networkService);
     saleService = SaleApiService(_networkService);
     testDriveService = TestDriveApiService(_networkService);
