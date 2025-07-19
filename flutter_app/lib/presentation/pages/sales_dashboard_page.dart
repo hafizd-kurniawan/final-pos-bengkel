@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/models/dashboard.dart';
 import '../../data/models/lead.dart';
 import '../../data/models/sale.dart';
 import '../../data/models/test_drive.dart';
-import '../../data/datasources/api_service_locator.dart';
+import '../bloc/dashboard/dashboard_bloc.dart';
+import '../bloc/dashboard/dashboard_event.dart';
+import '../bloc/dashboard/dashboard_state.dart';
+import '../bloc/auth/auth_bloc.dart';
+import '../bloc/auth/auth_event.dart';
 import '../widgets/dashboard_summary_card.dart';
 import '../widgets/lead_conversion_chart.dart';
 import '../widgets/sales_performance_widget.dart';

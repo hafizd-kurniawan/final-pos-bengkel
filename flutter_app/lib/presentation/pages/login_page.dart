@@ -9,6 +9,11 @@ import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
 import 'register_page.dart';
 import 'dashboard_page.dart';
+import 'admin_dashboard_page.dart';
+import 'sales_dashboard_page.dart';
+import 'cashier_dashboard_page.dart';
+import 'customer_dashboard_page.dart';
+import '../../data/models/user.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -55,11 +60,26 @@ class _LoginPageState extends State<LoginPage> {
               ),
             );
           } else if (state is AuthAuthenticated) {
+            // Navigate to role-specific dashboard
+            Widget targetPage;
+            switch (state.user.role) {
+              case UserRole.admin:
+                targetPage = const AdminDashboardPage();
+                break;
+              case UserRole.sales:
+                targetPage = const SalesDashboardPage();
+                break;
+              case UserRole.cashier:
+                targetPage = const CashierDashboardPage();
+                break;
+              case UserRole.customer:
+                targetPage = const CustomerDashboardPage();
+                break;
+            }
+            
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(
-                builder: (context) => const DashboardPage(),
-              ),
+              MaterialPageRoute(builder: (context) => targetPage),
             );
           }
         },

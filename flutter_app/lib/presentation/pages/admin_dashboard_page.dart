@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/models/dashboard.dart';
-import '../../data/datasources/api_service_locator.dart';
+import '../bloc/dashboard/dashboard_bloc.dart';
+import '../bloc/dashboard/dashboard_event.dart';
+import '../bloc/dashboard/dashboard_state.dart';
+import '../bloc/auth/auth_bloc.dart';
+import '../bloc/auth/auth_event.dart';
 import '../widgets/dashboard_summary_card.dart';
 import '../widgets/sales_chart_widget.dart';
 import '../widgets/vehicle_status_chart.dart';
@@ -16,15 +21,13 @@ class AdminDashboardPage extends StatefulWidget {
 class _AdminDashboardPageState extends State<AdminDashboardPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  DashboardData? _dashboardData;
-  bool _isLoading = true;
-  String? _error;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    _loadDashboardData();
+    // Load dashboard data
+    context.read<DashboardBloc>().add(const DashboardDataRequested());
   }
 
   @override
@@ -33,25 +36,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
     super.dispose();
   }
 
-  Future<void> _loadDashboardData() async {
-    try {
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
-
-      final data = await apiServices.dashboardService.getDashboard();
-
-      setState(() {
-        _dashboardData = data;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
-    }
+  void _logout() {
+    context.read<AuthBloc>().add(const AuthLogoutRequested());
+    Navigator.pushReplacementNamed(context, '/login');
   }
 
   @override
@@ -71,7 +58,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadDashboardData,
+            onPressed: () {
+              context.read<DashboardBloc>().add(const DashboardRefreshRequested());
+            },
           ),
           IconButton(
             icon: const Icon(Icons.notifications),
@@ -79,25 +68,37 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
               // Navigate to notifications
             },
           ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+          ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? _buildErrorWidget()
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildOverviewTab(),
-                    _buildAnalyticsTab(),
-                    _buildManagementTab(),
-                    _buildSettingsTab(),
-                  ],
-                ),
+      body: BlocBuilder<DashboardBloc, DashboardState>(
+        builder: (context, state) {
+          if (state is DashboardLoading) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (state is DashboardError) {
+            return _buildErrorWidget(state.message);
+          } else if (state is DashboardLoaded) {
+            return TabBarView(
+              controller: _tabController,
+              children: [
+                _buildOverviewTab(state.dashboardData),
+                _buildAnalyticsTab(),
+                _buildManagementTab(),
+                _buildSettingsTab(),
+              ],
+            );
+          }
+          
+          return const Center(child: CircularProgressIndicator());
+        },
+      ),
     );
   }
 
-  Widget _buildErrorWidget() {
+  Widget _buildErrorWidget(String error) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -114,7 +115,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
           ),
           const SizedBox(height: 8),
           Text(
-            _error!,
+            error,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.error,
                 ),
@@ -122,7 +123,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
           ),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: _loadDashboardData,
+            onPressed: () {
+              context.read<DashboardBloc>().add(const DashboardDataRequested());
+            },
             child: const Text('Retry'),
           ),
         ],
@@ -130,34 +133,34 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
     );
   }
 
-  Widget _buildOverviewTab() {
-    if (_dashboardData == null) return const SizedBox.shrink();
-
+  Widget _buildOverviewTab(DashboardData dashboardData) {
     return RefreshIndicator(
-      onRefresh: _loadDashboardData,
+      onRefresh: () async {
+        context.read<DashboardBloc>().add(const DashboardRefreshRequested());
+      },
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Summary Cards
-            _buildSummarySection(),
+            _buildSummarySection(dashboardData),
             const SizedBox(height: 24),
 
             // Charts Section
-            _buildChartsSection(),
+            _buildChartsSection(dashboardData),
             const SizedBox(height: 24),
 
             // Recent Activities
-            _buildRecentActivitiesSection(),
+            _buildRecentActivitiesSection(dashboardData),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSummarySection() {
-    final summary = _dashboardData!.summary;
+  Widget _buildSummarySection(DashboardData dashboardData) {
+    final summary = dashboardData.summary;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -211,8 +214,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
     );
   }
 
-  Widget _buildChartsSection() {
-    final charts = _dashboardData!.charts;
+  Widget _buildChartsSection(DashboardData dashboardData) {
+    final charts = dashboardData.charts;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -249,8 +252,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
     );
   }
 
-  Widget _buildRecentActivitiesSection() {
-    final recentData = _dashboardData!.recentData;
+  Widget _buildRecentActivitiesSection(DashboardData dashboardData) {
+    final recentData = dashboardData.recentData;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

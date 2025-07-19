@@ -3,17 +3,19 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/theme/app_theme.dart';
 import 'core/network/network_service.dart';
 import 'data/datasources/auth_remote_datasource.dart';
+import 'data/datasources/api_service_locator.dart';
 import 'data/repositories/auth_repository_impl.dart';
 import 'presentation/bloc/auth/auth_bloc.dart';
 import 'presentation/bloc/auth/auth_event.dart';
+import 'presentation/bloc/dashboard/dashboard_bloc.dart';
 import 'presentation/pages/splash_page.dart';
 import 'presentation/pages/login_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize network service
-  NetworkService().initialize();
+  // Initialize API services
+  apiServices.initialize();
   
   runApp(const VehicleSalesApp());
 }
@@ -27,19 +29,18 @@ class VehicleSalesApp extends StatelessWidget {
       providers: [
         BlocProvider<AuthBloc>(
           create: (context) {
-            final networkService = NetworkService();
-            final authRemoteDataSource = AuthRemoteDataSourceImpl(
-              networkService: networkService,
-            );
             final authRepository = AuthRepositoryImpl(
-              remoteDataSource: authRemoteDataSource,
+              remoteDataSource: apiServices.authService,
             );
             
             return AuthBloc(
               authRepository: authRepository,
-              networkService: networkService,
+              networkService: apiServices.networkService,
             )..add(const AuthStatusChecked());
           },
+        ),
+        BlocProvider<DashboardBloc>(
+          create: (context) => DashboardBloc(),
         ),
       ],
       child: MaterialApp(
