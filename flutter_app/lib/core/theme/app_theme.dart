@@ -12,7 +12,7 @@ class AppTheme {
         surface: AppColors.surface,
         surfaceVariant: AppColors.surfaceVariant,
       ),
-      
+
       // App Bar Theme
       appBarTheme: const AppBarTheme(
         centerTitle: true,
@@ -26,16 +26,15 @@ class AppTheme {
           color: AppColors.textPrimary,
         ),
       ),
-      
+
       // Card Theme
-      cardTheme: CardTheme(
-        elevation: 2,
-        shadowColor: AppColors.textTertiary.withOpacity(0.1),
+      cardTheme: CardThemeData(
+        elevation: 4,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
       ),
-      
+
       // Input Decoration Theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -56,9 +55,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.error, width: 1),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
-      
+
       // Elevated Button Theme
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -72,7 +72,7 @@ class AppTheme {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         ),
       ),
-      
+
       // Text Button Theme
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
@@ -83,10 +83,10 @@ class AppTheme {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
       ),
-      
+
       // Font Family
       fontFamily: 'Poppins',
-      
+
       // Text Theme
       textTheme: const TextTheme(
         headlineLarge: TextStyle(
@@ -161,7 +161,7 @@ class AppTheme {
       ),
     );
   }
-  
+
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
@@ -173,3 +173,4 @@ class AppTheme {
     );
   }
 }
+
